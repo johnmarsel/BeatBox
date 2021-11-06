@@ -3,7 +3,9 @@ package com.johnmarsel.beatbox
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.ViewGroup
+import android.widget.SeekBar
 import androidx.databinding.DataBindingUtil
+import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.johnmarsel.beatbox.databinding.ActivityMainBinding
@@ -11,19 +13,35 @@ import com.johnmarsel.beatbox.databinding.ListItemSoundBinding
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var beatBox: BeatBox
+    private val beatBoxViewModel: BeatBoxViewModel by lazy {
+        ViewModelProviders.of(this).get(BeatBoxViewModel::class.java) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        beatBox = BeatBox(assets)
 
         val binding: ActivityMainBinding =
             DataBindingUtil.setContentView(this, R.layout.activity_main)
 
         binding.recyclerView.apply {
             layoutManager = GridLayoutManager(context, 3)
-            adapter = SoundAdapter(beatBox.sounds)
+            adapter = SoundAdapter(beatBoxViewModel.beatBox.sounds)
+        }
+        binding.seekBarText.text = getString(R.string.seekbar_text,
+            binding.seekBar.progress.toString())
+        binding.seekBar.apply {
+            setOnSeekBarChangeListener(object: SeekBar.OnSeekBarChangeListener{
+                override fun onProgressChanged(seekBar: SeekBar?,
+                                               progress: Int,
+                                               fromUser: Boolean) {
+                    binding.seekBarText.text = getString(R.string.seekbar_text, progress.toString())
+                }
+                override fun onStartTrackingTouch(seekBar: SeekBar?) {    }
+                override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                    if (seekBar != null) {
+                        beatBoxViewModel.beatBox.changeSoundSpeed(seekBar.progress)
+                    }
+                }
+            })
         }
     }
 
@@ -31,7 +49,7 @@ class MainActivity : AppCompatActivity() {
         RecyclerView.ViewHolder(binding.root) {
 
         init {
-            binding.viewModel = SoundViewModel(beatBox)
+            binding.viewModel = SoundViewModel(beatBoxViewModel.beatBox)
         }
 
         fun bind(sound: Sound) {
@@ -61,10 +79,5 @@ class MainActivity : AppCompatActivity() {
         }
 
         override fun getItemCount() = sounds.size
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        beatBox.release()
     }
 }
